@@ -28,10 +28,28 @@ RUN make -j $(nproc)
 RUN objcopy --only-keep-debug tmate tmate.symbols && chmod -x tmate.symbols && strip tmate
 RUN ./tmate -V
 
-FROM alpine:3.9
+FROM ubuntu
 
-RUN apk --no-cache add bash
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN sed -i 's:^path-exclude=/usr/share/man:#path-exclude=/usr/share/man:' /etc/dpkg/dpkg.cfg.d/excludes
 RUN mkdir /build
 ENV PATH=/build:$PATH
 COPY --from=build /build/tmate.symbols /build
 COPY --from=build /build/tmate /build
+
+RUN apt-get update && apt-get install -y apg sudo locales tzdata apt-utils man manpages-posix less \
+ && rm -rf /var/lib/apt/lists/* \
+ && localedef -i hu_HU -c -f UTF-8 -A /usr/share/locale/locale.alias hu_HU.UTF-8 \
+ && echo "root:`apg -n1`" | chpasswd 
+# && useradd -m -p sKzEqcFhB5Zfo -s /bin/bash admin \
+# && usermod -aG sudo admin
+
+
+ENV LANG hu_HU.utf8
+ENV TZ=Europe/Budapest
+
+COPY entrypoint.sh ./
+RUN chmod a+x entrypoint.sh
+
+ENTRYPOINT ["bash", "./entrypoint.sh"]
